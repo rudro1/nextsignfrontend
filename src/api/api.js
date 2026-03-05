@@ -60,13 +60,14 @@
 import axios from 'axios';
 
 const API = axios.create({ 
-  baseURL: 'https://nextsignbackemd.onrender.com/api' 
+  // 🔴 Purano Render link ta muche Vercel-er link-ta boshayen
+  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api' 
 });
 
 export const documentAPI = {
   getDocuments: () => API.get('/documents'),
   
-  // ✅ Multipart header add kora hoyeche upload-er jonno
+  // ✅ Multipart header add kora ache
   uploadPdf: (formData) => API.post('/upload-pdf', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
