@@ -60,20 +60,33 @@
 import axios from 'axios';
 
 const API = axios.create({ 
-  // ✅ Render er bodole naya Vercel URL
-  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api' 
+  // ✅ Vercel Backend URL
+  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api',
+  // ✅ CORS handling-er jonno eita bhalo practice
+  withCredentials: true 
 });
 
 export const documentAPI = {
+  // Shob documents fetch kora
   getDocuments: () => API.get('/documents'),
   
+  // ✅ PDF Upload (Cloudinary-te jay)
   uploadPdf: (formData) => API.post('/upload-pdf', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   
+  // Link generate kora (Signatures position shoho)
   generateLink: (data) => API.post('/generate-link', data),
+  
+  // Document details ana
   getById: (id) => API.get(`/doc/${id}`),
+  
+  // Download kora
   downloadDoc: (id) => API.get(`/doc/${id}`),
+  
+  // Sign submit kora (Email verification start hoy)
   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
+  
+  // OTP verify kore signing process complete kora
   verifyOtp: (data) => API.post('/verify-otp', data)
 };
