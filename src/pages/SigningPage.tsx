@@ -1354,8 +1354,7 @@ import { Button } from '../components/ui/Button';
 import { PenTool, Loader2, X, CheckCircle2, ShieldCheck } from 'lucide-react';
 
 // ✅ Fixed PDF Worker Path for Production
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
 export function SigningPage() {
   const { id } = useParams();
   const navigate = useNavigate();
