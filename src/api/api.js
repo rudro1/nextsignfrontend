@@ -56,36 +56,18 @@
 //   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
 //   verifyOtp: (data) => API.post('/verify-otp', data)
 // };
+// src/api/api.js
 import axios from 'axios';
 
 const API = axios.create({ 
-  // ✅ Vercel Backend URL thik ache
-  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api',
-  // ✅ CORS handling-er jonno eita thaka dorkar
+  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api', // No trailing slash
   withCredentials: true 
 });
 
 export const documentAPI = {
-  // Shob documents fetch kora
   getDocuments: () => API.get('/documents'),
-  
-  // ✅ PDF Upload (Cloudinary-te jay)
-  uploadPdf: (formData) => API.post('/upload-pdf', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' } // Multer er jonno eita must
-  }),
-  
-  // Link generate kora
   generateLink: (data) => API.post('/generate-link', data),
-  
-  // Document details ana
   getById: (id) => API.get(`/doc/${id}`),
-  
-  // Download kora
-  downloadDoc: (id) => API.get(`/doc/${id}`),
-  
-  // Sign submit kora
   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
-  
-  // OTP verify kora
   verifyOtp: (data) => API.post('/verify-otp', data)
 };

@@ -1089,7 +1089,6 @@
 //     </div>
 //   );
 // }
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -1138,43 +1137,54 @@ export function UploadPage() {
     }]);
   };
 
- const handleGenerateLink = async () => {
-  if (!selectedFile || signatures.length === 0) return alert("Please add a sign box!");
-  
-  setIsUploading(true);
-  try {
-    const formData = new FormData();
-    // 🔴 'pdfFile' key-ta backend-er multer er sathe milte hobe
-    formData.append('pdfFile', selectedFile); 
-
-    console.log("Uploading file...");
-    const uploadRes = await documentAPI.uploadPdf(formData);
+  // ✅ Cloudinary Direct Upload Logic implemented inside handleGenerateLink
+  const handleGenerateLink = async () => {
+    if (!selectedFile || signatures.length === 0) return alert("Please add a sign box!");
     
-    if (uploadRes.data && uploadRes.data.pdfPath) {
-      console.log("Upload Success! Path:", uploadRes.data.pdfPath);
+    setIsUploading(true);
+    try {
+      // ☁️ 1. Direct Cloudinary Upload (Preventing 5MB Backend Limit)
+      const data = new FormData();
+      data.append("file", selectedFile);
+      data.append("upload_preset", "fixensy_preset");
+      data.append("cloud_name", "dxbpamnhh");
+
+      const cloudRes = await fetch(
+        `https://api.cloudinary.com/v1_1/dxbpamnhh/auto/upload`,
+        { method: "POST", body: data }
+      );
       
-      const formattedSigns = signatures.map(sig => ({ 
-        id: sig.id, x: sig.x, y: sig.localY, page: sig.page 
-      }));
+      const cloudData = await cloudRes.json();
 
-      const linkRes = await documentAPI.generateLink({ 
-          pdfPath: uploadRes.data.pdfPath, 
-          signs: formattedSigns, 
-          name: selectedFile.name 
-      });
+      if (cloudData.secure_url) {
+        // 🚀 2. Send Metadata to Backend
+        const formattedSigns = signatures.map(sig => ({ 
+          id: sig.id, 
+          x: sig.x, 
+          y: sig.localY, 
+          page: sig.page 
+        }));
 
-      if (linkRes.data.id) {
-          setGeneratedLink(`${window.location.origin}/sign/${linkRes.data.id}`);
-          setStep('success');
+        const linkRes = await documentAPI.generateLink({ 
+            pdfPath: cloudData.secure_url, 
+            signs: formattedSigns, 
+            name: selectedFile.name 
+        });
+
+        if (linkRes.data.id) {
+            setGeneratedLink(`${window.location.origin}/sign/${linkRes.data.id}`);
+            setStep('success');
+        }
+      } else {
+        throw new Error("Cloudinary upload failed");
       }
+    } catch (err) { 
+      console.error("Full Error Details:", err);
+      alert("Process Failed! Please try again."); 
+    } finally { 
+      setIsUploading(false); 
     }
-  } catch (err) { 
-    console.error("Full Error Details:", err.response?.data || err.message);
-    alert("Upload Failed! Check if file is too large (Max 5MB)."); 
-  } finally { 
-    setIsUploading(false); 
-  }
-};
+  };
 
   // ✅ Drag logic with Touch support
   useEffect(() => {
