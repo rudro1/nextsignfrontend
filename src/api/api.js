@@ -41,6 +41,22 @@
 
 
 //deploy
+// import axios from 'axios';
+
+// const API = axios.create({ 
+//   baseURL: 'https://nextsignbackemd.onrender.com/api' 
+// });
+
+// export const documentAPI = {
+//   getDocuments: () => API.get('/documents'),
+//   uploadPdf: (formData) => API.post('/upload-pdf', formData),
+//   generateLink: (data) => API.post('/generate-link', data),
+//   getById: (id) => API.get(`/doc/${id}`),
+//   downloadDoc: (id) => API.get(`/documents/download/${id}`),
+//   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
+//   verifyOtp: (data) => API.post('/verify-otp', data)
+// };
+
 import axios from 'axios';
 
 const API = axios.create({ 

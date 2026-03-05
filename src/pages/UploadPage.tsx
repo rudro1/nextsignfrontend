@@ -633,7 +633,6 @@
 //   );
 // }
 
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -647,8 +646,8 @@ import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// ✅ ফিক্স ১: প্রোডাকশন-রেডি PDF Worker পাথ (CDN ব্যবহার করা হয়েছে)
-pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+// ✅ ফিক্স: ডায়নামিক ভার্সন ডিটেকশন (unpkg CDN ব্যবহার করা হয়েছে যা একদম সঠিক ভার্সন লোড করবে)
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface SignaturePos {
   id: number;
@@ -673,7 +672,7 @@ export function UploadPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollParentRef = useRef<HTMLDivElement>(null);
 
-  // 🛠 ফিক্স ২: অটোমেটিক পেজ ডিটেকশন লজিক
+  // 🛠 অটোমেটিক পেজ ডিটেকশন লজিক
   const addSignatureBox = () => {
     if (!containerRef.current || !scrollParentRef.current) return;
     const scrollOffset = scrollParentRef.current.scrollTop;
@@ -697,10 +696,8 @@ export function UploadPage() {
         const formData = new FormData();
         formData.append('pdfFile', selectedFile);
         
-        // ১. PDF আপলোড করা
         const uploadRes = await documentAPI.uploadPdf(formData);
         
-        // ২. সিগনেচার ডাটা ম্যাপ করা
         const formattedSigns = signatures.map(sig => ({ 
           id: sig.id, 
           x: sig.x, 
@@ -708,7 +705,6 @@ export function UploadPage() {
           page: sig.page 
         }));
 
-        // ৩. লিঙ্কের জন্য রিকোয়েস্ট পাঠানো (Render API call)
         const linkRes = await documentAPI.generateLink({ 
             pdfPath: uploadRes.data.pdfPath, 
             signs: formattedSigns, 
@@ -716,7 +712,6 @@ export function UploadPage() {
         });
 
         if (linkRes.data.id) {
-            // 🛠 ফিক্স ৩: সঠিক ডোমেইন লিঙ্ক তৈরি (Vercel URL auto detect করবে)
             const fullLink = `${window.location.origin}/sign/${linkRes.data.id}`;
             setGeneratedLink(fullLink);
             setStep('success');
@@ -810,7 +805,7 @@ export function UploadPage() {
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
                   loading={<div className="p-10 text-center text-slate-500 font-bold">Loading PDF...</div>}
                 >
-                  {Array.from(new Array(numPages), (_, i) => (
+                  {Array.from(new Array(numPages || 0), (_, i) => (
                     <div key={i} className="border-b last:border-0">
                       <Page pageNumber={i + 1} width={600} renderTextLayer={false} renderAnnotationLayer={false} />
                     </div>
