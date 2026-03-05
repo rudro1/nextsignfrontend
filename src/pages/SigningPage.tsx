@@ -1603,7 +1603,6 @@ export function SigningPage() {
   const [otp, setOtp] = useState('');
   const [pageWidth, setPageWidth] = useState(600);
 
-  // Responsive Calculation
   useEffect(() => {
     const updateWidth = () => {
       const width = window.innerWidth;
@@ -1626,7 +1625,9 @@ export function SigningPage() {
     if (!email || sigCanvas.current.isEmpty()) return alert("Email & Signature required!");
     setIsSubmitting(true);
     try {
-      const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
+      // ✅ FIX: Compress Signature to avoid Connection Drop (ERR_INTERNET_DISCONNECTED)
+      const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png', 0.5);
+      
       const signaturesMap = {};
       doc.signs.forEach((s) => { 
         signaturesMap[s.id || s._id] = signatureImage; 
@@ -1638,12 +1639,13 @@ export function SigningPage() {
         setIsModalOpen(false);
       }
     } catch (e) {
-      alert("Error: Backend connection failed or Email error.");
+      console.error(e);
+      alert("Submission stuck! Check if your Internet or Server is slow.");
     } finally { setIsSubmitting(false); }
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.length < 6) return alert("Enter 6 digits code");
+    if (otp.length < 6) return alert("Enter 6 digits");
     setIsSubmitting(true);
     try {
       const res = await documentAPI.verifyOtp({ id, otp });
@@ -1653,12 +1655,12 @@ export function SigningPage() {
     finally { setIsSubmitting(false); }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-bold">Loading Document...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-20">
       <header className="w-full bg-white border-b p-4 sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 shadow-sm">
-        <div className="font-black text-sky-600 text-2xl flex items-center gap-2 italic">
+        <div className="font-black text-sky-600 italic text-2xl flex items-center gap-2">
           <PenTool size={24} /> FixenSysign
         </div>
         {step === 'sign' && (
@@ -1671,12 +1673,10 @@ export function SigningPage() {
 
       {step === 'sign' ? (
         <main className="mt-10 px-4 w-full flex flex-col items-center">
-          {/* Mobile Email Input */}
           <div className="md:hidden w-full mb-4">
-            <input type="email" placeholder="Enter Email to Sign" className="w-full border p-3 rounded-xl shadow-sm outline-none" value={email} onChange={(e)=>setEmail(e.target.value)} />
+             <input type="email" placeholder="Email" className="w-full border p-3 rounded-xl" value={email} onChange={(e)=>setEmail(e.target.value)} />
           </div>
-
-          <div className="bg-white p-1 md:p-4 shadow-xl rounded-lg">
+          <div className="bg-white p-1 md:p-4 shadow-xl rounded-lg overflow-hidden">
             <Document file={doc?.pdfPath} onLoadSuccess={({numPages}) => setNumPages(numPages)}>
               {Array.from(new Array(numPages || 0), (_, i) => (
                 <div key={i} className="relative mb-4 border-b border-slate-50 last:border-0">
@@ -1684,13 +1684,10 @@ export function SigningPage() {
                   {doc?.signs?.filter((s) => Number(s.page) === i+1).map((sig, idx) => {
                     const scale = pageWidth / 600;
                     return (
-                      <div 
-                        key={idx} 
-                        onClick={() => setIsModalOpen(true)} 
-                        className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 cursor-pointer flex items-center justify-center"
+                      <div key={idx} onClick={() => setIsModalOpen(true)} className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 cursor-pointer flex items-center justify-center"
                         style={{ left: sig.x * scale, top: sig.y * scale, width: 150 * scale, height: 50 * scale }}
                       >
-                        <span className="font-bold text-sky-600 text-[10px] uppercase">Sign Here</span>
+                        <span className="font-bold text-sky-600 text-[10px]">Sign Here</span>
                       </div>
                     );
                   })}
@@ -1703,10 +1700,10 @@ export function SigningPage() {
         <div className="mt-20 px-4 w-full max-w-md">
           <div className="bg-white p-8 rounded-[2rem] shadow-2xl text-center border-t-[8px] border-sky-600">
             <ShieldCheck className="h-16 w-16 text-sky-600 mx-auto mb-4" />
-            <h2 className="text-xl font-black mb-6">Verification</h2>
+            <h2 className="text-xl font-black mb-6">Enter Code</h2>
             <input type="text" maxLength={6} className="w-full text-center text-4xl font-bold p-3 bg-slate-50 rounded-2xl mb-6 border-2 outline-none" value={otp} onChange={(e) => setOtp(e.target.value)} />
             <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-14 text-white font-black rounded-xl">
-              {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'VERIFY & DOWNLOAD'}
+              {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm'}
             </Button>
           </div>
         </div>
@@ -1715,14 +1712,14 @@ export function SigningPage() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl">
-             <div className="flex justify-between font-bold mb-4"><span>Sign Document</span><button onClick={()=>setIsModalOpen(false)}><X/></button></div>
+             <div className="flex justify-between font-bold mb-4 uppercase text-xs tracking-widest text-slate-500">Draw Signature <button onClick={()=>setIsModalOpen(false)}><X/></button></div>
              <div className="border-2 border-slate-100 rounded-2xl bg-slate-50 overflow-hidden mb-6">
                 <SignatureCanvas ref={sigCanvas} penColor='#000' canvasProps={{ className: 'w-full h-52' }} />
              </div>
              <div className="flex gap-3">
                 <Button variant="outline" className="flex-1 rounded-xl" onClick={()=>sigCanvas.current.clear()}>Clear</Button>
                 <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold h-12 rounded-xl">
-                    {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm Signature'}
+                    {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm'}
                 </Button>
              </div>
           </div>
