@@ -899,7 +899,6 @@
 //     </div>
 //   );
 // }
-
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
@@ -909,39 +908,27 @@ import { Upload, Move, Check, ArrowLeft, Loader2, Plus, Trash2 } from 'lucide-re
 import { documentAPI } from '../api/api';
 import { Document, Page, pdfjs } from 'react-pdf';
 
-// CSS Imports
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 
-// ✅ ফিক্স: লোকাল ওয়ার্কার (CORS Error এবং 404 চিরতরে শেষ)
-// এটি করার আগে টার্মিনালে npm install pdfjs-dist@latest দিতে হবে
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString();
-
-interface SignaturePos {
-  id: number;
-  x: number;
-  y: number;       
-  localY: number;  
-  page: number; 
-}
+// ✅ Worker Fix: Standard CDN link use kora hoyeche jate loading fail na hoy
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export function UploadPage() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [step, setStep] = useState<'upload' | 'place' | 'success'>('upload');
+  const [step, setStep] = useState('upload');
   const [isUploading, setIsUploading] = useState(false);
   const [generatedLink, setGeneratedLink] = useState('');
-  const [signatures, setSignatures] = useState<SignaturePos[]>([]);
-  const [activeId, setActiveId] = useState<number | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [numPages, setNumPages] = useState<number | null>(null);
+  const [signatures, setSignatures] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [numPages, setNumPages] = useState(null);
   
-  const containerRef = useRef<HTMLDivElement>(null);
-  const scrollParentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef(null);
+  const scrollParentRef = useRef(null);
 
+  // ✅ Add Sign Function (Button name changed to "Add Sign")
   const addSignatureBox = () => {
     if (!containerRef.current || !scrollParentRef.current) return;
     const scrollOffset = scrollParentRef.current.scrollTop;
@@ -976,13 +963,13 @@ export function UploadPage() {
             setGeneratedLink(`${window.location.origin}/sign/${linkRes.data.id}`);
             setStep('success');
         }
-    } catch (err: any) { 
+    } catch (err) { 
         alert("Upload Failed!"); 
     } finally { setIsUploading(false); }
   };
 
   useEffect(() => {
-    const handleMove = (e: any) => {
+    const handleMove = (e) => {
       if (activeId === null || !containerRef.current) return;
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
@@ -1008,23 +995,23 @@ export function UploadPage() {
   }, [activeId, numPages]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row overflow-x-hidden">
       <Sidebar currentView="upload" isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <main className="flex-1 lg:ml-64 p-4 lg:p-8 pt-20 transition-all duration-300">
-        <header className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 text-left">
+          <div className="flex items-center gap-4 w-full">
             <Button variant="ghost" onClick={() => navigate('/dashboard')} className="rounded-full">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-xl lg:text-2xl font-bold text-slate-900">Prepare Document</h1>
-              <p className="text-xs lg:text-sm text-slate-500">Add and position signature fields on the PDF</p>
+              <h1 className="text-xl lg:text-3xl font-black text-slate-900 uppercase italic">Prepare Document</h1>
+              <p className="text-xs lg:text-sm text-slate-500 font-bold uppercase tracking-widest">Add signature boxes and position them</p>
             </div>
           </div>
           {step === 'place' && (
-            <Button onClick={addSignatureBox} className="bg-sky-600 text-white rounded-xl shadow-lg flex gap-2">
-              <Plus className="h-4 w-4" /> Add Sign Field
+            <Button onClick={addSignatureBox} className="bg-sky-600 text-white rounded-xl shadow-lg flex gap-2 w-full sm:w-auto font-black italic h-12 px-6">
+              <Plus className="h-4 w-4" /> ADD SIGN
             </Button>
           )}
         </header>
@@ -1042,16 +1029,19 @@ export function UploadPage() {
         )}
 
         {step === 'place' && (
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div ref={scrollParentRef} className="flex-1 bg-slate-200 rounded-3xl p-2 lg:p-8 overflow-auto border border-slate-300 max-h-[75vh] shadow-inner">
-              <div ref={containerRef} className="relative mx-auto shadow-2xl bg-white select-none rounded-lg" style={{ width: '600px', maxWidth: '100%' }}>
+          // ✅ Large screen responsive fix (flex-row for desktop)
+          <div className="flex flex-col xl:flex-row gap-8 items-start justify-center">
+            
+            {/* PDF View Container */}
+            <div ref={scrollParentRef} className="w-full xl:w-[850px] bg-slate-200 rounded-[2rem] p-4 lg:p-10 overflow-auto border border-slate-300 h-[70vh] xl:h-[80vh] shadow-inner custom-scrollbar">
+              <div ref={containerRef} className="relative mx-auto shadow-2xl bg-white select-none" style={{ width: '600px', maxWidth: '100%' }}>
                 <Document 
                   file={selectedFile} 
                   onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                  loading={<div className="p-10 text-center font-bold">Rendering PDF...</div>}
+                  loading={<div className="p-20 text-center font-black text-slate-400 animate-pulse tracking-tighter text-2xl uppercase">Rendering Secure PDF...</div>}
                 >
                   {Array.from(new Array(numPages || 0), (_, i) => (
-                    <div key={i} className="border-b last:border-0">
+                    <div key={i} className="mb-4 border-b last:border-0 shadow-sm">
                       <Page pageNumber={i + 1} width={600} renderTextLayer={false} renderAnnotationLayer={false} />
                     </div>
                   ))}
@@ -1059,37 +1049,40 @@ export function UploadPage() {
                 
                 {signatures.map((sig) => (
                   <div key={sig.id} style={{ left: sig.x, top: sig.y, touchAction: 'none' }} onMouseDown={() => setActiveId(sig.id)} onTouchStart={() => setActiveId(sig.id)}
-                    className="absolute z-[50] w-[150px] h-[50px] border-2 border-dashed border-sky-600 bg-sky-500/20 backdrop-blur-[2px] flex items-center justify-center cursor-move rounded-lg"
+                    className="absolute z-[50] w-[150px] h-[50px] border-2 border-dashed border-sky-600 bg-sky-500/20 backdrop-blur-[2px] flex items-center justify-center cursor-move rounded-lg shadow-lg group"
                   >
                     <span className="text-[10px] font-black text-sky-800 uppercase flex items-center gap-1"><Move className="h-3 w-3" /> Sign Here</span>
-                    <button onClick={(e) => { e.stopPropagation(); setSignatures(signatures.filter(s => s.id !== sig.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><Trash2 className="h-3 w-3" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); setSignatures(signatures.filter(s => s.id !== sig.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:scale-110 transition-transform"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="w-full lg:w-80 space-y-6">
-              <Card className="p-6 bg-white rounded-3xl">
-                <h3 className="font-bold text-slate-800 text-sm uppercase mb-4 border-b pb-4">Document Info</h3>
-                <div className="flex justify-between"><span>Fields:</span><span className="font-black text-sky-600">{signatures.length}</span></div>
-                <div className="flex justify-between"><span>Pages:</span><span className="font-bold text-slate-700">{numPages || 0}</span></div>
+            {/* ✅ Info Panel Responsive Fix */}
+            <div className="w-full xl:w-80 space-y-6">
+              <Card className="p-8 bg-white rounded-[2rem] border-none shadow-xl text-left">
+                <h3 className="font-black text-slate-800 text-xs uppercase mb-6 border-b pb-4 tracking-widest italic">Document Details</h3>
+                <div className="flex justify-between mb-3 text-sm font-bold"><span className="text-slate-400">SIGN BOXES:</span><span className="text-sky-600 font-black">{signatures.length}</span></div>
+                <div className="flex justify-between text-sm font-bold"><span className="text-slate-400">TOTAL PAGES:</span><span className="text-slate-700 font-black">{numPages || 0}</span></div>
               </Card>
-              <Button className="w-full bg-sky-600 h-16 text-lg font-black text-white rounded-3xl shadow-lg" onClick={handleGenerateLink} disabled={isUploading || signatures.length === 0}>
-                {isUploading ? <Loader2 className="animate-spin mx-auto" /> : 'Finish & Share'}
+              <Button className="w-full bg-sky-600 h-20 text-xl font-black text-white rounded-[2rem] shadow-2xl shadow-sky-100 uppercase tracking-tighter italic" onClick={handleGenerateLink} disabled={isUploading || signatures.length === 0}>
+                {isUploading ? <Loader2 className="animate-spin mx-auto h-8 w-8" /> : 'FINISH & SHARE'}
               </Button>
             </div>
           </div>
         )}
 
         {step === 'success' && (
-          <div className="max-w-xl mx-auto mt-10 text-center px-4">
-            <Check className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-black mb-2">LINK GENERATED!</h2>
-            <div className="flex gap-3 p-4 bg-white border rounded-2xl mb-10 shadow-inner">
-              <input readOnly value={generatedLink} className="flex-1 bg-transparent px-4 text-sm truncate outline-none" />
-              <Button onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Copied!"); }} className="bg-slate-900 text-white px-4 rounded-xl">Copy</Button>
+          <div className="max-w-xl mx-auto mt-10 text-center px-4 animate-in fade-in zoom-in duration-500">
+             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+               <Check className="h-10 w-10 text-green-600" />
             </div>
-            <Button className="w-full h-14 bg-sky-600 text-white rounded-xl font-bold uppercase" onClick={() => window.open(generatedLink, '_blank')}>Open Page</Button>
+            <h2 className="text-3xl font-black mb-2 uppercase italic">Success! Link Ready</h2>
+            <div className="flex gap-3 p-5 bg-white border-2 border-slate-100 rounded-[2rem] mb-10 shadow-inner mt-6 items-center">
+              <input readOnly value={generatedLink} className="flex-1 bg-transparent px-4 text-sm truncate outline-none font-bold text-sky-700" />
+              <Button onClick={() => { navigator.clipboard.writeText(generatedLink); alert("Copied!"); }} className="bg-slate-900 text-white px-6 h-12 rounded-2xl font-black uppercase text-xs">Copy</Button>
+            </div>
+            <Button className="w-full h-16 bg-sky-600 text-white rounded-[2rem] font-black uppercase tracking-widest shadow-xl" onClick={() => window.open(generatedLink, '_blank')}>OPEN SIGNING PAGE</Button>
           </div>
         )}
       </main>
