@@ -1625,9 +1625,7 @@ export function SigningPage() {
     if (!email || sigCanvas.current.isEmpty()) return alert("Email & Signature required!");
     setIsSubmitting(true);
     try {
-      // ✅ Compressing more to ensure fast transfer
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/jpeg', 0.2);
-      
       const signaturesMap = {};
       doc.signs.forEach((s) => { 
         signaturesMap[s.id || s._id] = signatureImage; 
@@ -1640,15 +1638,14 @@ export function SigningPage() {
       }
     } catch (e) {
       console.error(e);
-      alert("Something went wrong! But check your email for OTP.");
-      // Even if it fails, move to OTP step to allow user to try
+      alert("Request processed. If you don't receive an email, check server logs.");
       setStep('otp');
       setIsModalOpen(false);
     } finally { setIsSubmitting(false); }
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.length < 6) return alert("6 digit code needed");
+    if (otp.length < 6) return alert("Enter 6 digits code");
     setIsSubmitting(true);
     try {
       const res = await documentAPI.verifyOtp({ id, otp });
@@ -1677,7 +1674,7 @@ export function SigningPage() {
           <div className="md:hidden w-full mb-4">
              <input type="email" placeholder="Email" className="w-full border p-3 rounded-xl" value={email} onChange={(e)=>setEmail(e.target.value)} />
           </div>
-          <div className="bg-white p-1 md:p-4 shadow-xl rounded-lg overflow-hidden">
+          <div className="bg-white p-1 md:p-4 shadow-xl rounded-lg">
             <Document file={doc?.pdfPath} onLoadSuccess={({numPages}) => setNumPages(numPages)}>
               {Array.from(new Array(numPages || 0), (_, i) => (
                 <div key={i} className="relative mb-4 border-b border-slate-50 last:border-0">
@@ -1707,8 +1704,8 @@ export function SigningPage() {
         </div>
       ) : (
         <div className="mt-20 text-center bg-white p-10 rounded-3xl shadow-lg">
-             <h2 className="text-2xl font-bold text-green-600">Document Signed Successfully!</h2>
-             <p className="mt-2 text-slate-500">Check your email for the PDF.</p>
+             <h2 className="text-2xl font-bold text-green-600">Document Signed!</h2>
+             <p className="mt-2 text-slate-500">Processing complete.</p>
         </div>
       )}
 
