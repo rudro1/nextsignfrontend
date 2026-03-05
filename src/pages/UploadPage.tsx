@@ -1138,40 +1138,43 @@ export function UploadPage() {
     }]);
   };
 
-  const handleGenerateLink = async () => {
-    if (!selectedFile || signatures.length === 0) return alert("Please add at least one sign box!");
-    setIsUploading(true);
-    try {
-        const formData = new FormData();
-        formData.append('pdfFile', selectedFile);
-        
-        // 1. PDF Upload to Cloudinary
-        const uploadRes = await documentAPI.uploadPdf(formData);
-        
-        // 2. Format signs for Backend
-        const formattedSigns = signatures.map(sig => ({ 
-          id: sig.id, 
-          x: sig.x, 
-          y: sig.localY, 
-          page: sig.page 
-        }));
+ const handleGenerateLink = async () => {
+  if (!selectedFile || signatures.length === 0) return alert("Please add a sign box!");
+  
+  setIsUploading(true);
+  try {
+    const formData = new FormData();
+    // 🔴 'pdfFile' key-ta backend-er multer er sathe milte hobe
+    formData.append('pdfFile', selectedFile); 
 
-        // 3. Create DB Entry
-        const linkRes = await documentAPI.generateLink({ 
-            pdfPath: uploadRes.data.pdfPath, 
-            signs: formattedSigns, 
-            name: selectedFile.name 
-        });
+    console.log("Uploading file...");
+    const uploadRes = await documentAPI.uploadPdf(formData);
+    
+    if (uploadRes.data && uploadRes.data.pdfPath) {
+      console.log("Upload Success! Path:", uploadRes.data.pdfPath);
+      
+      const formattedSigns = signatures.map(sig => ({ 
+        id: sig.id, x: sig.x, y: sig.localY, page: sig.page 
+      }));
 
-        if (linkRes.data.id) {
-            setGeneratedLink(`${window.location.origin}/sign/${linkRes.data.id}`);
-            setStep('success');
-        }
-    } catch (err) { 
-        console.error("Upload process error:", err);
-        alert("Upload Failed! Check console for details."); 
-    } finally { setIsUploading(false); }
-  };
+      const linkRes = await documentAPI.generateLink({ 
+          pdfPath: uploadRes.data.pdfPath, 
+          signs: formattedSigns, 
+          name: selectedFile.name 
+      });
+
+      if (linkRes.data.id) {
+          setGeneratedLink(`${window.location.origin}/sign/${linkRes.data.id}`);
+          setStep('success');
+      }
+    }
+  } catch (err) { 
+    console.error("Full Error Details:", err.response?.data || err.message);
+    alert("Upload Failed! Check if file is too large (Max 5MB)."); 
+  } finally { 
+    setIsUploading(false); 
+  }
+};
 
   // ✅ Drag logic with Touch support
   useEffect(() => {
