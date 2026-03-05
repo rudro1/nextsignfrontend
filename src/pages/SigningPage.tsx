@@ -1592,7 +1592,6 @@ export function SigningPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const sigCanvas = useRef(null);
-  
   const [doc, setDoc] = useState(null);
   const [numPages, setNumPages] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -1601,94 +1600,70 @@ export function SigningPage() {
   const [step, setStep] = useState('sign');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [pageWidth, setPageWidth] = useState(window.innerWidth < 640 ? window.innerWidth - 32 : 600);
+  // ✅ Responsive Width Logic
+  const [pageWidth, setPageWidth] = useState(window.innerWidth < 640 ? window.innerWidth - 30 : 600);
 
   useEffect(() => {
-    const handleResize = () => setPageWidth(window.innerWidth < 640 ? window.innerWidth - 32 : 600);
+    const handleResize = () => setPageWidth(window.innerWidth < 640 ? window.innerWidth - 30 : 600);
     window.addEventListener('resize', handleResize);
+    if (id) documentAPI.getById(id).then(res => { setDoc(res.data); setLoading(false); });
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  useEffect(() => {
-    if (id) {
-      documentAPI.getById(id)
-        .then(res => { setDoc(res.data); setLoading(false); })
-        .catch(() => { setLoading(false); });
-    }
   }, [id]);
 
   const handleSignSubmit = async () => {
-    if (!email || sigCanvas.current.isEmpty()) return alert("Email & Signature required!");
+    if (!email || sigCanvas.current.isEmpty()) return alert("Email & Sign required!");
     setIsSubmitting(true);
     try {
-      // ✅ Fix: Use PNG and Transparent Background
       const signatureImage = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
       const signaturesMap = {};
-      doc.signs.forEach((s) => { signaturesMap[s.id || s._id] = signatureImage; });
-
-      const res = await documentAPI.submitSign(id, { signaturesMap, email });
-      if (res.status === 200) {
-        setStep('otp');
-        setIsModalOpen(false);
-      }
-    } catch (e) {
-      setStep('otp'); // Fallback to OTP step to check Render logs
+      doc.signs.forEach(s => signaturesMap[s.id || s._id] = signatureImage);
+      await documentAPI.submitSign(id, { signaturesMap, email });
+      setStep('otp');
       setIsModalOpen(false);
-    } finally { setIsSubmitting(false); }
+    } catch (e) { setStep('otp'); setIsModalOpen(false); }
+    finally { setIsSubmitting(false); }
   };
 
   const handleVerifyOtp = async () => {
-    if (otp.length < 6) return alert("Enter 6 digits code");
     setIsSubmitting(true);
     try {
       const res = await documentAPI.verifyOtp({ id, otp });
-      const pdfUrl = res.data.pdf;
-
-      if (pdfUrl) {
-        // ✅ Auto Download Trigger
-        const link = document.createElement('a');
-        link.href = pdfUrl;
-        link.download = 'Signed_Document.pdf';
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setStep('success');
-      }
+      // ✅ Force Direct Download (Works on Mobile/PC)
+      const response = await fetch(res.data.pdf);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Signed_${doc.name || 'Doc'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setStep('success');
     } catch (e) { alert("Invalid OTP"); }
     finally { setIsSubmitting(false); }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center font-bold">Loading...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-20">
-      <header className="w-full bg-white border-b p-4 sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 shadow-sm">
-        <div className="font-black text-sky-600 italic text-xl md:text-2xl flex items-center gap-2"><PenTool size={24} /> FixenSysign</div>
-        {step === 'sign' && (
-          <div className="flex gap-2">
-            <input type="email" placeholder="Email" className="border p-2 rounded-xl text-sm hidden md:block w-64 outline-none" value={email} onChange={(e)=>setEmail(e.target.value)} />
-            <Button onClick={() => setIsModalOpen(true)} className="bg-sky-600 text-white px-6 rounded-xl font-bold h-10">Sign Now</Button>
-          </div>
-        )}
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-10">
+      <header className="w-full bg-white border-b p-4 sticky top-0 z-[50] flex justify-between items-center px-4 shadow-sm">
+        <div className="font-black text-sky-600 flex items-center gap-2"><PenTool size={20}/> FixenSysign</div>
+        {step === 'sign' && <Button onClick={() => setIsModalOpen(true)} className="bg-sky-600 text-white px-6 rounded-xl font-bold">Sign</Button>}
       </header>
 
       {step === 'sign' ? (
-        <main className="mt-6 md:mt-10 px-2 w-full flex flex-col items-center">
-          <div className="md:hidden w-full max-w-[90%] mb-4">
-             <input type="email" placeholder="Email" className="w-full border p-3 rounded-xl bg-white shadow-sm" value={email} onChange={(e)=>setEmail(e.target.value)} />
-          </div>
-          <div className="bg-white p-1 md:p-4 shadow-xl rounded-lg border">
+        <main className="mt-6 px-2 w-full flex flex-col items-center">
+          <input type="email" placeholder="Enter Email" className="w-full max-w-[600px] border p-3 rounded-xl mb-4 bg-white" value={email} onChange={(e)=>setEmail(e.target.value)} />
+          <div className="bg-white p-1 md:p-4 shadow-lg rounded-xl border overflow-hidden">
             <Document file={doc?.pdfPath} onLoadSuccess={({numPages}) => setNumPages(numPages)}>
               {Array.from(new Array(numPages || 0), (_, i) => (
-                <div key={i} className="relative mb-4 border-b border-slate-50 last:border-0">
+                <div key={i} className="relative mb-4 border-b">
                   <Page pageNumber={i + 1} width={pageWidth} renderTextLayer={false} renderAnnotationLayer={false} />
-                  {doc?.signs?.filter((s) => Number(s.page) === i+1).map((sig, idx) => (
-                    <div key={idx} onClick={() => setIsModalOpen(true)} className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 cursor-pointer flex items-center justify-center"
+                  {doc?.signs?.filter(s => Number(s.page) === i+1).map((sig, idx) => (
+                    <div key={idx} onClick={() => setIsModalOpen(true)} className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 flex items-center justify-center cursor-pointer"
                       style={{ left: (sig.x * pageWidth)/600, top: (sig.y * pageWidth)/600, width: (150 * pageWidth)/600, height: (50 * pageWidth)/600 }}
-                    >
-                      <span className="font-bold text-sky-600 text-[8px] md:text-[10px]">Sign Here</span>
-                    </div>
+                    ><span className="text-sky-600 font-bold text-[10px]">Sign Here</span></div>
                   ))}
                 </div>
               ))}
@@ -1697,36 +1672,33 @@ export function SigningPage() {
         </main>
       ) : step === 'otp' ? (
         <div className="mt-20 px-4 w-full max-w-md">
-          <div className="bg-white p-8 rounded-[2rem] shadow-2xl text-center border-t-[8px] border-sky-600">
-            <ShieldCheck className="h-16 w-16 text-sky-600 mx-auto mb-4" />
-            <h2 className="text-xl font-black mb-6 uppercase tracking-tight">Enter OTP Code</h2>
-            <input type="text" maxLength={6} className="w-full text-center text-4xl font-mono p-3 bg-slate-50 rounded-2xl mb-6 border-2 outline-none" value={otp} onChange={(e) => setOtp(e.target.value)} />
-            <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-14 text-white font-black rounded-xl">
+          <div className="bg-white p-8 rounded-3xl shadow-xl text-center border-t-8 border-sky-600">
+            <ShieldCheck className="h-12 w-12 text-sky-600 mx-auto mb-4" />
+            <h2 className="font-bold text-xl mb-6">Verify OTP</h2>
+            <input type="text" maxLength={6} className="w-full text-center text-3xl font-bold p-3 bg-slate-50 rounded-xl mb-6 border-2 outline-none" value={otp} onChange={(e) => setOtp(e.target.value)} />
+            <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-14 text-white font-bold rounded-xl">
               {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm & Download'}
             </Button>
-            <p className="mt-4 text-xs text-slate-400">Check your email or Render logs for the code.</p>
           </div>
         </div>
       ) : (
-        <div className="mt-20 text-center bg-white p-10 rounded-3xl shadow-lg">
-             <h2 className="text-2xl font-black text-green-600">Successfully Signed!</h2>
-             <p className="mt-2 text-slate-500">Your document has been sent to your email.</p>
-             <Button onClick={() => navigate('/documents')} className="mt-6 bg-slate-800 text-white rounded-xl px-8">Back to Dashboard</Button>
+        <div className="mt-20 text-center bg-white p-10 rounded-3xl shadow-lg border border-green-100">
+             <h2 className="text-2xl font-bold text-green-600">Document Signed!</h2>
+             <p className="mt-2 text-slate-500">A copy has been sent to your email.</p>
+             <Button onClick={() => navigate('/documents')} className="mt-6 bg-slate-800 text-white rounded-xl px-10">Dashboard</Button>
         </div>
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl">
-             <div className="flex justify-between font-bold mb-4 uppercase text-[10px] tracking-widest text-slate-500">Draw Signature <button onClick={()=>setIsModalOpen(false)}><X/></button></div>
-             <div className="border-2 border-slate-100 rounded-2xl bg-white overflow-hidden mb-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-3xl w-full max-w-lg p-6">
+             <div className="flex justify-between mb-4 font-bold text-slate-500">Draw Signature <button onClick={()=>setIsModalOpen(false)}><X/></button></div>
+             <div className="border-2 rounded-2xl bg-white overflow-hidden mb-6">
                 <SignatureCanvas ref={sigCanvas} penColor='#000' backgroundColor='rgba(0,0,0,0)' canvasProps={{ className: 'w-full h-52' }} />
              </div>
              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={()=>sigCanvas.current.clear()}>Clear</Button>
-                <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold h-12 rounded-xl">
-                    {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm'}
-                </Button>
+                <Button variant="outline" className="flex-1 rounded-xl" onClick={()=>sigCanvas.current.clear()}>Clear</Button>
+                <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold rounded-xl">Confirm</Button>
              </div>
           </div>
         </div>
