@@ -59,21 +59,21 @@
 
 import axios from 'axios';
 
-// ✅ Base URL define kora hoyeche
 const API = axios.create({ 
   baseURL: 'https://nextsignbackemd.onrender.com/api' 
 });
 
-// ✅ Object-er bhitore function gulo thikmoto define kora hoyeche
 export const documentAPI = {
   getDocuments: () => API.get('/documents'),
-  uploadPdf: (formData) => API.post('/upload-pdf', formData),
+  
+  // ✅ Multipart header add kora hoyeche upload-er jonno
+  uploadPdf: (formData) => API.post('/upload-pdf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  
   generateLink: (data) => API.post('/generate-link', data),
   getById: (id) => API.get(`/doc/${id}`),
   downloadDoc: (id) => API.get(`/doc/${id}`),
   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
   verifyOtp: (data) => API.post('/verify-otp', data)
 };
-
-// ⚠️ JODI upore kono vul thake, tobe niche check koren 
-// line 68 er ashepahse extra kono ':' ache kina.
