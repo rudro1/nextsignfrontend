@@ -1344,7 +1344,6 @@
 //     </div>
 //   );
 // }
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
@@ -1353,8 +1352,17 @@ import { documentAPI } from '../api/api';
 import { Button } from '../components/ui/Button';
 import { PenTool, Loader2, X, CheckCircle2, ShieldCheck } from 'lucide-react';
 
-// ✅ Fixed PDF Worker Path for Production
-pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+// ✅ CSS Imports for PDF
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+
+// ✅ ফিক্স: লোকাল ওয়ার্কার (CORS এবং Version Mismatch চিরতরে শেষ)
+// এটি অটোমেটিক আপনার প্রজেক্টের installed pdfjs-dist ভার্সন খুঁজে নিবে
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
+
 export function SigningPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -1371,6 +1379,7 @@ export function SigningPage() {
   const [otp, setOtp] = useState('');
   const [pageWidth, setPageWidth] = useState(600);
 
+  // Responsive Width Logic
   useEffect(() => {
     const updateWidth = () => {
       if (containerRef.current) {
@@ -1400,14 +1409,20 @@ export function SigningPage() {
     try {
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
       const signaturesMap: Record<string, string> = {};
+      
+      // Mapping signatures to the specific fields
       doc.signs.forEach((s: any) => { 
         signaturesMap[s.id || s._id] = signatureImage; 
       });
+
       await documentAPI.submitSign(id!, { signaturesMap, email });
       setStep('otp');
       setIsModalOpen(false);
-    } catch (e) { alert("Error sending verification code!"); }
-    finally { setIsSubmitting(false); }
+    } catch (e) { 
+      alert("Error sending verification code! Check if backend is running."); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   const handleVerifyOtp = async () => {
@@ -1415,15 +1430,21 @@ export function SigningPage() {
     setIsSubmitting(true);
     try {
       const res = await documentAPI.verifyOtp({ id, otp });
+      
+      // Auto-download logic
       const link = document.createElement('a');
       link.href = res.data.pdf;
       link.download = `Signed_${doc?.name || 'Document'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      
       setStep('success');
-    } catch (e) { alert("Invalid OTP! Verification failed."); }
-    finally { setIsSubmitting(false); }
+    } catch (e) { 
+      alert("Invalid OTP! Verification failed."); 
+    } finally { 
+      setIsSubmitting(false); 
+    }
   };
 
   if (loading) return (
@@ -1435,9 +1456,9 @@ export function SigningPage() {
   if (step === 'success') return (
     <div className="h-screen flex flex-col items-center justify-center bg-white p-6 text-center animate-in fade-in duration-500">
       <CheckCircle2 className="h-20 w-20 text-emerald-500 mb-4 animate-bounce" />
-      <h2 className="text-4xl font-black italic text-slate-900 uppercase">Signed Successfully!</h2>
+      <h2 className="text-4xl font-black italic text-slate-900 uppercase tracking-tighter">Signed Successfully!</h2>
       <p className="text-slate-500 mt-2 font-medium">Your document has been verified and downloaded.</p>
-      <Button onClick={() => navigate('/')} className="mt-10 bg-slate-900 px-12 rounded-2xl text-white font-bold h-14 shadow-xl">
+      <Button onClick={() => navigate('/')} className="mt-10 bg-slate-900 px-12 rounded-2xl text-white font-bold h-14 shadow-xl active:scale-95 transition-transform">
         Back to Home
       </Button>
     </div>
@@ -1446,7 +1467,7 @@ export function SigningPage() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-20 font-sans">
       <header className="w-full bg-white border-b p-4 sticky top-0 z-[100] flex flex-col md:flex-row justify-between items-center px-6 gap-4 shadow-sm">
-        <div className="flex items-center gap-2 font-black text-sky-600 italic text-xl">
+        <div className="flex items-center gap-2 font-black text-sky-600 italic text-xl select-none">
           <PenTool /> FixenSysign
         </div>
         {step === 'sign' && (
@@ -1454,11 +1475,11 @@ export function SigningPage() {
             <input 
               type="email" 
               placeholder="Verification Email" 
-              className="border-2 p-2 px-4 rounded-xl text-sm outline-none md:w-64 focus:border-sky-500 transition-all font-medium" 
+              className="border-2 p-2 px-4 rounded-xl text-sm outline-none md:w-64 focus:border-sky-500 transition-all font-medium bg-slate-50" 
               value={email} 
               onChange={(e)=>setEmail(e.target.value)} 
             />
-            <Button onClick={() => setIsModalOpen(true)} className="bg-sky-600 px-8 rounded-xl text-white font-black h-10 shadow-lg active:scale-95 transition-all">
+            <Button onClick={() => setIsModalOpen(true)} className="bg-sky-600 px-8 rounded-xl text-white font-black h-10 shadow-lg active:scale-95 transition-all whitespace-nowrap">
               Sign Now
             </Button>
           </div>
@@ -1468,20 +1489,35 @@ export function SigningPage() {
       {step === 'sign' ? (
         <main ref={containerRef} className="mt-8 px-4 w-full flex flex-col items-center overflow-x-hidden">
           <div className="bg-white p-2 md:p-4 shadow-2xl rounded-sm">
-            <Document file={doc?.pdfPath} onLoadSuccess={({numPages}) => setNumPages(numPages)}>
+            <Document 
+              file={doc?.pdfPath} 
+              onLoadSuccess={({numPages}) => setNumPages(numPages)}
+              loading={<div className="p-10 text-center font-bold text-slate-400">Loading PDF...</div>}
+            >
               {Array.from(new Array(numPages || 0), (_, i) => (
-                <div key={i} className="relative mb-6 border-b border-slate-100 last:border-0">
-                  <Page pageNumber={i + 1} width={pageWidth} renderTextLayer={false} renderAnnotationLayer={false} />
+                <div key={i} className="relative mb-6 border-b border-slate-100 last:border-0 shadow-sm">
+                  <Page 
+                    pageNumber={i + 1} 
+                    width={pageWidth} 
+                    renderTextLayer={false} 
+                    renderAnnotationLayer={false} 
+                  />
+                  {/* Signature Box Rendering */}
                   {doc?.signs?.filter((s:any) => Number(s.page) === i+1).map((sig: any, idx: number) => {
                     const scale = pageWidth / 600;
                     return (
                       <div 
                         key={idx} 
                         onClick={() => setIsModalOpen(true)} 
-                        className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 cursor-pointer flex items-center justify-center animate-pulse hover:bg-sky-500/20 transition-all"
-                        style={{ left: `${sig.x * scale}px`, top: `${sig.y * scale}px`, width: `${150 * scale}px`, height: `${50 * scale}px` }}
+                        className="absolute border-2 border-dashed border-sky-500 bg-sky-500/10 cursor-pointer flex items-center justify-center animate-pulse hover:bg-sky-500/20 transition-all rounded-md group"
+                        style={{ 
+                          left: `${sig.x * scale}px`, 
+                          top: `${sig.y * scale}px`, 
+                          width: `${150 * scale}px`, 
+                          height: `${50 * scale}px` 
+                        }}
                       >
-                        <span className="font-bold text-sky-600 uppercase text-[8px] md:text-[10px]">Sign Here</span>
+                        <span className="font-bold text-sky-600 uppercase text-[8px] md:text-[10px] group-hover:scale-110 transition-transform">Click to Sign</span>
                       </div>
                     );
                   })}
@@ -1491,40 +1527,48 @@ export function SigningPage() {
           </div>
         </main>
       ) : (
+        /* OTP STEP */
         <div className="mt-20 px-4 w-full max-w-md animate-in slide-in-from-bottom-5 duration-500">
           <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl text-center border-t-8 border-sky-600">
             <ShieldCheck className="h-16 w-16 text-sky-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-black mb-2 uppercase tracking-tight text-slate-800">Verify Code</h2>
-            <p className="text-slate-500 mb-8 text-sm font-medium">Enter the 6-digit code sent to <br/><b>{email}</b></p>
+            <h2 className="text-2xl font-black mb-2 uppercase tracking-tight text-slate-800">Verify Identity</h2>
+            <p className="text-slate-500 mb-8 text-sm font-medium">Enter the 6-digit code sent to <br/><b className="text-slate-900">{email}</b></p>
             <input 
               type="text" maxLength={6} placeholder="000000"
-              className="w-full text-center text-4xl font-black tracking-[0.3em] p-4 bg-slate-50 rounded-2xl mb-8 border-2 focus:border-sky-500 outline-none transition-all" 
+              className="w-full text-center text-4xl font-black tracking-[0.3em] p-4 bg-slate-50 rounded-2xl mb-8 border-2 focus:border-sky-500 outline-none transition-all placeholder:text-slate-200" 
               value={otp} onChange={(e) => setOtp(e.target.value)} 
             />
-            <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-16 text-white font-black rounded-2xl shadow-lg hover:bg-sky-700 transition-colors">
+            <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-16 text-white font-black rounded-2xl shadow-lg hover:bg-sky-700 transition-colors disabled:bg-slate-300">
               {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'VERIFY & DOWNLOAD'}
             </Button>
           </div>
         </div>
       )}
 
+      {/* Signature Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="p-6 border-b flex justify-between font-black uppercase text-sm italic items-center">
+            <div className="p-6 border-b flex justify-between font-black uppercase text-sm italic items-center bg-white">
               Draw Your Signature 
-              <button onClick={() => setIsModalOpen(false)} className="hover:text-rose-500 transition-colors"><X size={24}/></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={24}/>
+              </button>
             </div>
             <div className="p-8 bg-slate-50 text-center">
               <div className="border-2 border-slate-200 bg-white rounded-2xl overflow-hidden shadow-inner cursor-crosshair">
-                <SignatureCanvas ref={sigCanvas} penColor='#000' canvasProps={{ className: 'w-full h-44' }} />
+                <SignatureCanvas 
+                  ref={sigCanvas} 
+                  penColor='#000' 
+                  canvasProps={{ className: 'w-full h-44' }} 
+                />
               </div>
               <button onClick={() => sigCanvas.current.clear()} className="mt-3 text-xs text-rose-500 font-bold uppercase hover:underline">Clear Pad</button>
             </div>
             <div className="p-6 flex gap-3 bg-white">
               <Button variant="outline" className="flex-1 rounded-xl h-12 font-bold" onClick={() => setIsModalOpen(false)}>Cancel</Button>
               <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold rounded-xl h-12 shadow-md active:scale-95 transition-all">
-                {isSubmitting ? 'Sending...' : 'Confirm'}
+                {isSubmitting ? <Loader2 className="animate-spin h-5 w-5 mx-auto" /> : 'Confirm'}
               </Button>
             </div>
           </div>
