@@ -1600,13 +1600,16 @@ export function SigningPage() {
   const [step, setStep] = useState('sign');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  // ✅ Responsive Width Logic
   const [pageWidth, setPageWidth] = useState(window.innerWidth < 640 ? window.innerWidth - 30 : 600);
 
   useEffect(() => {
     const handleResize = () => setPageWidth(window.innerWidth < 640 ? window.innerWidth - 30 : 600);
     window.addEventListener('resize', handleResize);
-    if (id) documentAPI.getById(id).then(res => { setDoc(res.data); setLoading(false); });
+    if (id) {
+      documentAPI.getById(id)
+        .then(res => { setDoc(res.data); setLoading(false); })
+        .catch(() => setLoading(false));
+    }
     return () => window.removeEventListener('resize', handleResize);
   }, [id]);
 
@@ -1628,13 +1631,13 @@ export function SigningPage() {
     setIsSubmitting(true);
     try {
       const res = await documentAPI.verifyOtp({ id, otp });
-      // ✅ Force Direct Download (Works on Mobile/PC)
+      // ✅ Force Download logic
       const response = await fetch(res.data.pdf);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `Signed_${doc.name || 'Doc'}.pdf`);
+      link.setAttribute('download', 'Signed_Document.pdf');
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -1643,7 +1646,7 @@ export function SigningPage() {
     finally { setIsSubmitting(false); }
   };
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
+  if (loading) return <div className="h-screen flex items-center justify-center font-bold">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col items-center pb-10">
@@ -1654,7 +1657,7 @@ export function SigningPage() {
 
       {step === 'sign' ? (
         <main className="mt-6 px-2 w-full flex flex-col items-center">
-          <input type="email" placeholder="Enter Email" className="w-full max-w-[600px] border p-3 rounded-xl mb-4 bg-white" value={email} onChange={(e)=>setEmail(e.target.value)} />
+          <input type="email" placeholder="Enter Your Email" className="w-full max-w-[600px] border p-3 rounded-xl mb-4 bg-white outline-none focus:ring-2 ring-sky-500" value={email} onChange={(e)=>setEmail(e.target.value)} />
           <div className="bg-white p-1 md:p-4 shadow-lg rounded-xl border overflow-hidden">
             <Document file={doc?.pdfPath} onLoadSuccess={({numPages}) => setNumPages(numPages)}>
               {Array.from(new Array(numPages || 0), (_, i) => (
@@ -1674,8 +1677,8 @@ export function SigningPage() {
         <div className="mt-20 px-4 w-full max-w-md">
           <div className="bg-white p-8 rounded-3xl shadow-xl text-center border-t-8 border-sky-600">
             <ShieldCheck className="h-12 w-12 text-sky-600 mx-auto mb-4" />
-            <h2 className="font-bold text-xl mb-6">Verify OTP</h2>
-            <input type="text" maxLength={6} className="w-full text-center text-3xl font-bold p-3 bg-slate-50 rounded-xl mb-6 border-2 outline-none" value={otp} onChange={(e) => setOtp(e.target.value)} />
+            <h2 className="font-bold text-xl mb-6">Enter 6-Digit Code</h2>
+            <input type="text" maxLength={6} className="w-full text-center text-3xl font-bold p-3 bg-slate-50 rounded-xl mb-6 border-2 outline-none focus:border-sky-500" value={otp} onChange={(e) => setOtp(e.target.value)} />
             <Button onClick={handleVerifyOtp} disabled={isSubmitting} className="w-full bg-sky-600 h-14 text-white font-bold rounded-xl">
               {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Confirm & Download'}
             </Button>
@@ -1684,21 +1687,21 @@ export function SigningPage() {
       ) : (
         <div className="mt-20 text-center bg-white p-10 rounded-3xl shadow-lg border border-green-100">
              <h2 className="text-2xl font-bold text-green-600">Document Signed!</h2>
-             <p className="mt-2 text-slate-500">A copy has been sent to your email.</p>
-             <Button onClick={() => navigate('/documents')} className="mt-6 bg-slate-800 text-white rounded-xl px-10">Dashboard</Button>
+             <p className="mt-2 text-slate-500">The PDF has been downloaded and emailed.</p>
+             <Button onClick={() => navigate('/documents')} className="mt-6 bg-slate-800 text-white rounded-xl px-10">Back to Dashboard</Button>
         </div>
       )}
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-3xl w-full max-w-lg p-6">
-             <div className="flex justify-between mb-4 font-bold text-slate-500">Draw Signature <button onClick={()=>setIsModalOpen(false)}><X/></button></div>
+             <div className="flex justify-between mb-4 font-bold text-slate-500 uppercase text-xs tracking-widest">Draw Your Signature <button onClick={()=>setIsModalOpen(false)}><X/></button></div>
              <div className="border-2 rounded-2xl bg-white overflow-hidden mb-6">
                 <SignatureCanvas ref={sigCanvas} penColor='#000' backgroundColor='rgba(0,0,0,0)' canvasProps={{ className: 'w-full h-52' }} />
              </div>
              <div className="flex gap-3">
-                <Button variant="outline" className="flex-1 rounded-xl" onClick={()=>sigCanvas.current.clear()}>Clear</Button>
-                <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold rounded-xl">Confirm</Button>
+                <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={()=>sigCanvas.current.clear()}>Clear</Button>
+                <Button onClick={handleSignSubmit} disabled={isSubmitting} className="flex-1 bg-sky-600 text-white font-bold h-12 rounded-xl">Apply Signature</Button>
              </div>
           </div>
         </div>
