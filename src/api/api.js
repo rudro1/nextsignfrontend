@@ -60,14 +60,13 @@
 import axios from 'axios';
 
 const API = axios.create({ 
-  // 🔴 Purano Render link ta muche Vercel-er link-ta boshayen
+  // ✅ Render er bodole naya Vercel URL
   baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api' 
 });
 
 export const documentAPI = {
   getDocuments: () => API.get('/documents'),
   
-  // ✅ Multipart header add kora ache
   uploadPdf: (formData) => API.post('/upload-pdf', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
