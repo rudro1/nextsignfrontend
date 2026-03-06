@@ -1367,7 +1367,7 @@ export function UploadPage() {
   };
 
   const handleGenerateLink = async () => {
-    if (!selectedFile || signatures.length === 0) return alert("Add a sign box!");
+    if (!selectedFile || signatures.length === 0) return alert("Please add a sign box!");
     setIsUploading(true);
     try {
       const data = new FormData();
@@ -1388,9 +1388,13 @@ export function UploadPage() {
           setGeneratedLink(`${window.location.origin}/sign/${res.data.id}`);
           setStep('success');
         }
+      } else {
+        alert("Cloudinary Upload Error. Check your Preset!");
       }
-    } catch (err) { alert("Upload Failed!"); }
-    finally { setIsUploading(false); }
+    } catch (err) { 
+      console.error(err);
+      alert("Network Error or API Down!"); 
+    } finally { setIsUploading(false); }
   };
 
   useEffect(() => {
