@@ -74,8 +74,8 @@
 import axios from 'axios';
 
 const API = axios.create({ 
-  baseURL: 'https://nexsignbackendpart.vercel.app/api', 
-  withCredentials: true,
+  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api', 
+  // withCredentials: true, // ❌ Remove this line
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
