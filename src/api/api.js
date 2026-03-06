@@ -71,17 +71,26 @@
 //   submitSign: (id, data) => API.post(`/submit-sign/${id}`, data),
 //   verifyOtp: (data) => API.post('/verify-otp', data)
 // };
-
 import axios from 'axios';
 
 const API = axios.create({ 
-  baseURL: 'https://nextsignbackend-bisal-sahas-projects.vercel.app/api', 
+  baseURL: 'https://nexsignbackendpart.vercel.app/api', 
   withCredentials: true,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json'
-  }
+  },
+  timeout: 30000
 });
+
+// Error Interceptor
+API.interceptors.response.use(
+  response => response,
+  error => {
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
 
 export const documentAPI = {
   getDocuments: () => API.get('/documents'),
